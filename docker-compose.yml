@@ -1,0 +1,61 @@
+﻿version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: invoice-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - invoice-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: invoice-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - invoice-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: invoice-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./prompts:/app/prompts
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - ollama
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    networks:
+      - invoice-network
+
+networks:
+  invoice-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
