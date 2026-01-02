@@ -1,21 +1,22 @@
 ﻿"""
-Invoice Extraction System - Main API
 FastAPI Application
+Main API entry point
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from src.core.logging import logger
+from src.core.config import settings
 
-# Create FastAPI app
+# Import routers
+from src.api.routes import upload  # NEW!
+
 app = FastAPI(
-    title="Invoice Extraction System",
-    description="AI-powered invoice data extraction using LLM and OCR",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    title="Invoice Extraction API",
+    description="AI-powered invoice extraction system",
+    version="1.0.0"
 )
 
-# CORS middleware (allow all origins for development)
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,44 +25,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root endpoint
+# Include routers
+app.include_router(upload.router, prefix="/api/v1")  # NEW!
+
 @app.get("/")
 async def root():
-    """Root endpoint - API info"""
+    """Root endpoint"""
     return {
-        "message": "Invoice Extraction System API",
+        "message": "Invoice Extraction API",
         "version": "1.0.0",
-        "status": "running",
-        "endpoints": {
-            "docs": "/docs",
-            "health": "/health"
-        }
+        "status": "running"
     }
 
-# Health check endpoint
 @app.get("/health")
-async def health_check():
+async def health():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "service": "invoice-extraction-api",
-        "environment": os.getenv("ENV", "development"),
-        "services": {
-            "api": "up",
-            "redis": "checking...",
-            "ollama": "checking..."
-        }
+        "environment": settings.ENV
     }
 
 # Startup event
 @app.on_event("startup")
 async def startup_event():
-    """Run on application startup"""
-    print("🚀 Invoice Extraction System API started!")
-    print("📚 Docs available at: http://localhost:8000/docs")
+    logger.info("🚀 Invoice Extraction API started")
+    logger.info(f"Environment: {settings.ENV}")
+    logger.info(f"Upload directory: {settings.UPLOAD_DIR}")
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Run on application shutdown"""
-    print("👋 Invoice Extraction System API shutting down...")
+    logger.info("🛑 Invoice Extraction API stopped")
